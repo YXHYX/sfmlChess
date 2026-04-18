@@ -45,4 +45,7 @@
     <Text Include="src\game\Text.txt" />
     <Text Include="src\game\layout.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Font Include="res\font.ttf" />
+  </ItemGroup>
 </Project>
