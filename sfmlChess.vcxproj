@@ -194,11 +194,13 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\game\Bot.cpp" />
     <ClCompile Include="src\game\Board.cpp" />
     <ClCompile Include="src\game\Game.cpp" />
     <ClCompile Include="src\source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\Bot.h" />
     <ClInclude Include="src\game\Board.h" />
     <ClInclude Include="src\game\Game.h" />
   </ItemGroup>
@@ -211,7 +213,15 @@
     <Text Include="src\game\Text.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Font Include="res\font.ttf" />
+    <Media Include="res\check.wav" />
+    <Media Include="res\lose.wav" />
+    <Media Include="res\move.wav" />
+    <Media Include="res\select.wav" />
+    <Media Include="res\unselectable.wav" />
+    <Media Include="res\win.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="res\Minecraft.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

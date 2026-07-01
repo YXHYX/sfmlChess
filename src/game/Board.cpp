@@ -1,4 +1,5 @@
 #include "Board.h"
+#include "Board.h"
 /*
   0 empty
   1 pawn
@@ -10,6 +11,24 @@
   
   negative for black, positive for white
 */
+
+
+void Board::initSounds()
+{
+	this->soundBuffers["lose"] = sf::SoundBuffer("./res/lose.wav");
+	this->soundBuffers["win"] = sf::SoundBuffer("./res/win.wav");
+	this->soundBuffers["select"] = sf::SoundBuffer("./res/select.wav");
+	this->soundBuffers["select2"] = sf::SoundBuffer("./res/select.wav");
+	this->soundBuffers["unselectable"] = sf::SoundBuffer("./res/unselectable.wav");
+	this->soundBuffers["move"] = sf::SoundBuffer("./res/move.wav");
+	this->soundBuffers["take"] = sf::SoundBuffer("./res/take.wav");
+	this->soundBuffers["check"] = sf::SoundBuffer("./res/check.wav");
+
+
+	this->soundEffect = new sf::Sound(this->soundBuffers["select"]);
+	
+}
+
 void Board::resetBoard()
 {
 	//read directly from file
@@ -332,6 +351,11 @@ void Board::calculatePotentialMoves()
 			it++;
 	}
 	this->check = tempCheck;
+
+	if (potentialMoves.empty()) {
+		this->soundPlayed = "unselectable";
+	}
+
 }
 
 void Board::calcKingSafeSpace(bool team)
@@ -562,14 +586,39 @@ void Board::lookForChecks()
 		for (int j = 0; j < 8; j++)
 			if (this->board[i][j]*(2*turn-1) == 6 && this->movesBoard[i][j] == -1)
 			{
-				//whiteKing = { i,j };
 				this->check = true;
 			}
 
+
+	if (check) {
+		this->soundPlayed = "check";
+	}
+
+}
+
+void Board::playSounds()
+{
+	//only play the sound if we change state
+	//this ensures that it plays once
+	if (this->soundPlayed != this->prevSoundPlayed) {
+		this->prevSoundPlayed = this->soundPlayed;
+
+		if (this->soundPlayed == "move")
+			int a = 0;
+		//if the sound doesnt exist dont play it !!!
+		if (!this->soundBuffers.count(soundPlayed))
+			return;
+		if (this->soundEffect->getStatus() != sf::Sound::Status::Playing)
+		{
+			this->soundEffect->setBuffer(this->soundBuffers[soundPlayed]);
+			this->soundEffect->play();
+		}
+	}
 }
 
 Board::Board()
 {
+	this->initSounds();
 	if (!this->boardTexture.loadFromFile("./res/board.png"))
 		throw "ERROR::TEXTURE_NOT_FOUND::BOARD";
 	if (!this->piecesTexture.loadFromFile("./res/pieces.png"))
@@ -617,37 +666,55 @@ std::pair<int, int> Board::getScore()
 void Board::handleInput()
 {
 	bool changePlayerTurn = false;
-	if (this->boardSprite->getGlobalBounds().contains(sf::Vector2f(this->mouseCoords)) && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left) )
+	if (this->boardSprite->getGlobalBounds().contains(sf::Vector2f(this->mouseCoords)) && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 	{
 		//if there was a selected piece check if we are moving it or not
 		sf::Vector2i coords = sf::Vector2i(sf::Vector2f(this->mouseCoords).componentWiseDiv(this->boardSprite->getGlobalBounds().size) * 8.f);
 		if (!this->isPieceSelected)
 		{
+
 			this->selectedPieceCoords = coords;
 			this->selectedPieceType = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y];
-			this->isPieceSelected = this->selectedPieceType * (2*this->turn-1) > 0;
+			this->isPieceSelected = this->selectedPieceType * (2 * this->turn - 1) > 0;
+
+			this->soundPlayed = "select";
+
 		}
 		else {
 			bool playedMove = false;
-			if(!this->potentialMoves.empty())
-				for(auto move : this->potentialMoves)
+			bool atePiece = false;
+			if (!this->potentialMoves.empty())
+				for (auto move : this->potentialMoves)
 				{
 					// move it
 					if (move == coords)
 					{
+						atePiece = this->board[coords.x][coords.y] != 0;
+						playedMove = true;
 						this->board[coords.x][coords.y] = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y];
 						this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y] = 0;
-						playedMove = true;
+						break; // no need to continue over the rest
 					}
 				}
-			if(coords != this->selectedPieceCoords)
+
+			if (coords != this->selectedPieceCoords)
 			{
 				this->selectedPieceType = 0;
 				this->isPieceSelected = 0;
+				
+				this->soundPlayed = "select2";
 			}
 			if (playedMove)
+			{
+				//play the move sound
+				this->soundPlayed = atePiece ? "take" : "move";
 				this->turn = !this->turn;
+			}
 		}
+	}
+	else
+	{
+		soundPlayed = "none";
 	}
 }
 
@@ -658,7 +725,9 @@ void Board::update(const float& dt)
 	this->check = false;
 	this->calculatePotentialMoves();
 	this->lookForChecks();
-
+	
+	//done processing the board? play the corresponding sound
+	playSounds();
 }
 
 void Board::drawBoard(sf::RenderTarget* targ)
@@ -672,8 +741,7 @@ void Board::drawPieces(sf::RenderTarget* targ)
 		for (int j = 0; j < 8; j++)
 			if (this->board[i][j] != 0)
 			{
-				this->pieceSprite->setTextureRect(sf::IntRect({ 16*(abs(this->board[i][j])-1), 0}, {16, 16}));
-				this->pieceSprite->setColor(this->board[i][j] > 0 ? sf::Color::Red : sf::Color::Blue);
+				this->pieceSprite->setTextureRect(sf::IntRect({ 16*(abs(this->board[i][j])-1), this->board[i][j] > 0 ? 0 : 16}, {16, 16}));
 				this->pieceSprite->setPosition(sf::Vector2f(i*64,j*64)); // 16 x 4 scale
 				targ->draw(*this->pieceSprite);
 			}
@@ -688,3 +756,4 @@ void Board::render(sf::RenderTarget* targ)
 	this->drawPieces(targ);
 	this->renderPotentialMoves(targ);
 }
+

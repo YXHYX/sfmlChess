@@ -24,12 +24,18 @@
     <ClCompile Include="src\game\Board.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\Bot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\game\Game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\game\Board.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Bot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -46,6 +52,26 @@
     <Text Include="src\game\layout.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Font Include="res\font.ttf" />
+    <Media Include="res\win.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="res\select.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="res\unselectable.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="res\move.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="res\lose.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="res\check.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="res\Minecraft.ttf" />
   </ItemGroup>
 </Project>

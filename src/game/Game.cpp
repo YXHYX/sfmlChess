@@ -43,8 +43,9 @@ void Game::render()
 	this->window.display();
 }
 
-Game::Game(): dt(1.f), font("./res/font.ttf") 
+Game::Game(): dt(1.f), font("./res/Minecraft.ttf") 
 { 
+	
 	turn = new sf::Text(font,"Turn: ");
 	turn->setPosition({ 530,30 });
 
@@ -54,7 +55,7 @@ Game::Game(): dt(1.f), font("./res/font.ttf")
 	check = new sf::Text(font, "");
 	check->setPosition({ 530,180 });
 
-	this->window = sf::RenderWindow(sf::VideoMode(sf::Vector2u(800, 600)), "SFML Chess");
+	this->window = sf::RenderWindow(sf::VideoMode(sf::Vector2u(800, 512)), "SFML Chess", sf::Style::Close);
 }
 
 Game::~Game()
