@@ -5,7 +5,7 @@
 int main()
 {
 	//hide cmd
-	ShowWindow(GetConsoleWindow(), SW_HIDE); //SW_RESTORE 
+	//ShowWindow(GetConsoleWindow(), SW_HIDE); //SW_RESTORE 
 	Game game;
 
 	game.run();

@@ -20,6 +20,7 @@ void Board::initSounds()
 	this->soundBuffers["select"] = sf::SoundBuffer("./res/select.wav");
 	this->soundBuffers["select2"] = sf::SoundBuffer("./res/select.wav");
 	this->soundBuffers["unselectable"] = sf::SoundBuffer("./res/unselectable.wav");
+	//this->soundBuffers["unselectable2"] = sf::SoundBuffer("./res/unselectable.wav");
 	this->soundBuffers["move"] = sf::SoundBuffer("./res/move.wav");
 	this->soundBuffers["take"] = sf::SoundBuffer("./res/take.wav");
 	this->soundBuffers["check"] = sf::SoundBuffer("./res/check.wav");
@@ -91,271 +92,302 @@ void Board::renderPotentialMoves(sf::RenderTarget* target)
 	box.setFillColor(sf::Color(255, 187, 0, 128));
 
 	//Loop through all potential moves and draw them
-	for (auto& e : this->potentialMoves) {
+	for (auto& e : this->boardMoves[x][y]) {
 		box.setPosition(box.getSize().componentWiseMul(sf::Vector2f(e)));
 		target->draw(box);
 	}
 }
 
-void Board::calculatePotentialMoves()
+void Board::calcPotentialMoves()
 {
 	// 1 for white -1 for black
 	int team = (2 * turn - 1);
-	if (this->selectedPieceType == 0 || !this->isPieceSelected)
-		return;
-	auto [x, y] = this->selectedPieceCoords;
 
+	//clear the boardMoves which stores every potential move for the corresponding team
+	for (int i = 0; i < 8; i++)
+		for (int j = 0; j < 8; j++)
+			this->boardMoves[i][j].clear();
 	this->potentialMoves.clear();
 
 	//for pawns
 	int pawnDir = turn ? 1 : -1;
-	bool pawnIn = y + pawnDir > -1 && y + pawnDir < 8;// out of boundary
-	bool pawnMoved = this->turn ? (y!=1) : (y != 6);
-	//diagonal/horizontal/vertical flags check
-	bool ul = true, ur = true, bl = true, br = true;
-	bool up = true, bot = true, right = true, left = true;
 
+	//variable to check if the player can continue playing or not
+	bool movesAvailable = false;
 
-	switch(abs(this->selectedPieceType))
-	{
-	case 1:
-		//check for promotion
-		/// TODO
-		if (!pawnIn)
-			break;
-		//side check for enemy on right or left, eat them 
-		if (x - 1 > -1 && board[x - 1][y + pawnDir]* pawnDir <= -1)
-			potentialMoves.emplace_back(sf::Vector2i(x-1, y + pawnDir));
-		if (x + 1 < 8 && board[x + 1][y + pawnDir]*pawnDir <= -1)
-			potentialMoves.emplace_back(sf::Vector2i(x+1, y + pawnDir));
-		
-		if (board[x][y + pawnDir] != 0)
-			break;
-		
-		potentialMoves.emplace_back(sf::Vector2i(x, y + pawnDir));
-		
-		// if pawn moved, u cant move it to 2 spots ahead
-		if (pawnMoved || (y + 2 * pawnDir > -1 && y + 2 * pawnDir < 8 && board[x][y + 2 * pawnDir] != 0))
-			break;
-
-		potentialMoves.emplace_back(sf::Vector2i(x, y + 2*pawnDir));
-		break;
-	//bishop
-	case 2:
-		// check flags for
-		// up left, up right, bottom left, bottom right
-		for(int i = 1; i < 8; i++){
-			//ul
-			if (x - i < 0 || y + i > 7 || board[x - i][y + i] * team > 0)
-				ul = false;
-			//ur
-			if (x + i > 7 || y + i > 7 || board[x + i][y + i] * team > 0 )
-				ur = false;
-			//bl
-			if (x - i < 0 || y - i < 0 || board[x - i][y - i] * team > 0)
-				bl = false;
-			//br
-			if (x + i > 7 || y - i < 0 || board[x + i][y - i] * team > 0)
-				br = false;
-
-			if(ul)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y + i));
-			if (ur)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y + i));
-			if (bl)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y - i));
-			if (br)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y - i));
-
-			// if opposite team then mark them as "edible" by the piece and disable the flag ( you cant eat any pieces stacked, just the first one)		
-			ul = board[x - i][y + i] * team < 0 ? false : ul;
-			ur = board[x + i][y + i] * team < 0 ? false : ur;
-			bl = board[x - i][y - i] * team < 0 ? false : bl;
-			br = board[x + i][y - i] * team < 0 ? false : br;
+	for (int x = 0; x < 8; x++)
+		for (int y = 0; y < 8; y++)
+		{
+			//only calculate the potential moves for the current team 
+			if (this->board[x][y] * team < 1)
+				continue;
 			
-			if (!ul && !ur && !br && !bl)
-				break;
-		}
+			//for pawns
+			bool pawnIn = y + pawnDir > -1 && y + pawnDir < 8;// out of boundary
+			bool pawnMoved = this->turn ? (y != 1) : (y != 6);
+			//diagonal/horizontal/vertical flags check
+			bool ul = true, ur = true, bl = true, br = true;
+			bool up = true, bot = true, right = true, left = true;
 
-		break;
-	//rook
-	case 3:
-		for (int i = 1; i < 8; i++) {
-
-			//left
-			if (x - i < 0 || board[x - i][y] * team > 0 )
-				left = false;
-			//right
-			if (x + i > 7 || board[x + i][y] * team > 0)
-				right = false;
-			//up
-			if (y - i < 0 || board[x][y - i] * team > 0)
-				up = false;
-			//bot
-			if (y + i > 7 || board[x][y + i] * team > 0)
-				bot = false;
-
-			if (left)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y));
-			if (right)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y));
-			if (up)
-				potentialMoves.emplace_back(sf::Vector2i(x, y - i));
-			if (bot)
-				potentialMoves.emplace_back(sf::Vector2i(x, y + i));
-
-			left = board[x - i][y] * team < 0 ? false : left;
-			right = board[x + i][y] * team < 0 ? false : right;
-			up = board[x][y - i] * team < 0 ? false : up;
-			bot = board[x][y + i] * team < 0 ? false : bot;
-
-			if (!left && !right && !bot && !up)
-				break;
-		}
-		break;
-	//knight
-	case 4:
-		//check all 8 corners
-		if (x + 1 < 8 && y + 2 < 8 && board[x + 1][y + 2] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x + 1, y + 2));
-		if (x + 2 < 8 && y + 1 < 8 && board[x + 2][y + 1] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x + 2, y + 1));
-		if (x - 1 > -1 && y + 2 < 8 && board[x - 1][y + 2] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x - 1, y + 2));
-		if (x - 2 > -1 && y + 1 < 8 && board[x - 2][y + 1] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x - 2, y + 1));
-
-		
-		if (x + 1 < 8 && y - 2 > -1 && board[x + 1][y - 2] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x + 1, y - 2));
-		if (x + 2 < 8 && y - 1 > -1 && board[x + 2][y - 1] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x + 2, y - 1));
-		if (x - 1 > -1 && y - 2 > -1 && board[x - 1][y - 2] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x - 1, y - 2));
-		if (x - 2 > -1 && y - 1 > -1 && board[x - 2][y - 1] * team <= 0)
-			potentialMoves.emplace_back(sf::Vector2i(x - 2, y - 1));
-		
-		break;
-	//queen
-	case 5:
-		for (int i = 1; i < 8; i++) {
-
-			//combine rook and bishop checks
-			
-			//ul
-			if (x - i < 0 || y + i > 7 || board[x - i][y + i] * team > 0)
-				ul = false;
-			//ur
-			if (x + i > 7 || y + i > 7 || board[x + i][y + i] * team > 0)
-				ur = false;
-			//bl
-			if (x - i < 0 || y - i < 0 || board[x - i][y - i] * team > 0)
-				bl = false;
-			//br
-			if (x + i > 7 || y - i < 0 || board[x + i][y - i] * team > 0)
-				br = false;
-
-			
-			//left
-			if (x - i < 0 || board[x - i][y] * team > 0)
-				left = false;
-			//right
-			if (x + i > 7 || board[x + i][y] * team > 0)
-				right = false;
-			//up
-			if (y - i < 0 || board[x][y - i] * team > 0)
-				up = false;
-			//bot
-			if (y + i > 7 || board[x][y + i] * team > 0)
-				bot = false;
-
-			if (left)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y));
-			if (right)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y));
-			if (up)
-				potentialMoves.emplace_back(sf::Vector2i(x, y - i));
-			if (bot)
-				potentialMoves.emplace_back(sf::Vector2i(x, y + i));
-			if (ul)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y + i));
-			if (ur)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y + i));
-			if (bl)
-				potentialMoves.emplace_back(sf::Vector2i(x - i, y - i));
-			if (br)
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y - i));
-
-			left = board[x - i][y] * team < 0 ? false : left;
-			right = board[x + i][y] * team < 0 ? false : right;
-			up = board[x][y - i] * team < 0 ? false : up;
-			bot = board[x][y + i] * team < 0 ? false : bot;
-
-			ul = board[x - i][y + i] * team < 0 ? false : ul;
-			ur = board[x + i][y + i] * team < 0 ? false : ur;
-			bl = board[x - i][y - i] * team < 0 ? false : bl;
-			br = board[x + i][y - i] * team < 0 ? false : br;
-			if (!left && !right && !bot && !up && !ul && !ur && !br && !bl)
-				break;
-		}
-		break;
-	
-	//king
-		//superposed board to check where can the king move freely and check it in its entourage
-	case 6:
-		this->calcKingSafeSpace(this->turn);
-		for (int i = -1; i <= 1; i++)
-			for (int j = -1; j <= 1; j++)
+			switch(abs(this->board[x][y]))
 			{
-				if (!sf::IntRect({ 0,0 }, { 8,8 }).contains({x+i,y+j})
-					|| this->movesBoard[x + i][y + j] == -1 || (!i && !j))
-					continue;
+			case 1:
+				//check for promotion
+				/// TODO
+				if (!pawnIn)
+					break;
+				//side check for enemy on right or left, eat them 
+				if (x - 1 > -1 && board[x - 1][y + pawnDir]* pawnDir <= -1)
+					potentialMoves.emplace_back(sf::Vector2i(x-1, y + pawnDir));
+				if (x + 1 < 8 && board[x + 1][y + pawnDir]*pawnDir <= -1)
+					potentialMoves.emplace_back(sf::Vector2i(x+1, y + pawnDir));
+		
+				if (board[x][y + pawnDir] != 0)
+					break;
+		
+				potentialMoves.emplace_back(sf::Vector2i(x, y + pawnDir));
+		
+				// if pawn moved, u cant move it to 2 spots ahead
+				if (pawnMoved || (y + 2 * pawnDir > -1 && y + 2 * pawnDir < 8 && board[x][y + 2 * pawnDir] != 0))
+					break;
 
-				potentialMoves.emplace_back(sf::Vector2i(x + i, y + j));
-			}
-		break;
+				potentialMoves.emplace_back(sf::Vector2i(x, y + 2*pawnDir));
 
-	default:
-		break;
-	}
+				//add en passant ( check the previous move, if it is a pawn that moved 2 tiles ahead then it can be eaten with en passant
+				/*
+				if (x - 1 > -1 && board[x - 1][y + 2*pawnDir] * pawnDir <= -1)
+					potentialMoves.emplace_back(sf::Vector2i(x - 1, y + 2 * pawnDir));
+				if (x + 1 < 8 && board[x + 1][y + 2 * pawnDir] * pawnDir <= -1)
+					potentialMoves.emplace_back(sf::Vector2i(x + 1, y + 2 * pawnDir));
+				*/
+					break;
+			//bishop
+			case 2:
+				// check flags for
+				// up left, up right, bottom left, bottom right
+				for(int i = 1; i < 8; i++){
+					//ul
+					if (x - i < 0 || y + i > 7 || board[x - i][y + i] * team > 0)
+						ul = false;
+					//ur
+					if (x + i > 7 || y + i > 7 || board[x + i][y + i] * team > 0 )
+						ur = false;
+					//bl
+					if (x - i < 0 || y - i < 0 || board[x - i][y - i] * team > 0)
+						bl = false;
+					//br
+					if (x + i > 7 || y - i < 0 || board[x + i][y - i] * team > 0)
+						br = false;
 
+					if(ul)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y + i));
+					if (ur)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y + i));
+					if (bl)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y - i));
+					if (br)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y - i));
 
-	//PIN CHECK
+					// if opposite team then mark them as "edible" by the piece and disable the flag ( you cant eat any pieces stacked, just the first one)		
+					ul = board[x - i][y + i] * team < 0 ? false : ul;
+					ur = board[x + i][y + i] * team < 0 ? false : ur;
+					bl = board[x - i][y - i] * team < 0 ? false : bl;
+					br = board[x + i][y - i] * team < 0 ? false : br;
+			
+					if (!ul && !ur && !br && !bl)
+						break;
+				}
 
-	// cant move pieces that are pinned right?
-	// delete any potential move that may cause an in direct check?
-	// if checked delete any potential move which does not change the 
-	// fate of our beloved king?
+				break;
+			//rook
+			case 3:
+				for (int i = 1; i < 8; i++) {
+
+					//left
+					if (x - i < 0 || board[x - i][y] * team > 0 )
+						left = false;
+					//right
+					if (x + i > 7 || board[x + i][y] * team > 0)
+						right = false;
+					//up
+					if (y - i < 0 || board[x][y - i] * team > 0)
+						up = false;
+					//bot
+					if (y + i > 7 || board[x][y + i] * team > 0)
+						bot = false;
+
+					if (left)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y));
+					if (right)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y));
+					if (up)
+						potentialMoves.emplace_back(sf::Vector2i(x, y - i));
+					if (bot)
+						potentialMoves.emplace_back(sf::Vector2i(x, y + i));
+
+					left = board[x - i][y] * team < 0 ? false : left;
+					right = board[x + i][y] * team < 0 ? false : right;
+					up = board[x][y - i] * team < 0 ? false : up;
+					bot = board[x][y + i] * team < 0 ? false : bot;
+
+					if (!left && !right && !bot && !up)
+						break;
+				}
+				break;
+			//knight
+			case 4:
+				//check all 8 corners
+				if (x + 1 < 8 && y + 2 < 8 && board[x + 1][y + 2] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x + 1, y + 2));
+				if (x + 2 < 8 && y + 1 < 8 && board[x + 2][y + 1] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x + 2, y + 1));
+				if (x - 1 > -1 && y + 2 < 8 && board[x - 1][y + 2] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x - 1, y + 2));
+				if (x - 2 > -1 && y + 1 < 8 && board[x - 2][y + 1] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x - 2, y + 1));
+
+		
+				if (x + 1 < 8 && y - 2 > -1 && board[x + 1][y - 2] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x + 1, y - 2));
+				if (x + 2 < 8 && y - 1 > -1 && board[x + 2][y - 1] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x + 2, y - 1));
+				if (x - 1 > -1 && y - 2 > -1 && board[x - 1][y - 2] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x - 1, y - 2));
+				if (x - 2 > -1 && y - 1 > -1 && board[x - 2][y - 1] * team <= 0)
+					potentialMoves.emplace_back(sf::Vector2i(x - 2, y - 1));
+		
+				break;
+			//queen
+			case 5:
+				for (int i = 1; i < 8; i++) {
+
+					//combine rook and bishop checks
+			
+					//ul
+					if (x - i < 0 || y + i > 7 || board[x - i][y + i] * team > 0)
+						ul = false;
+					//ur
+					if (x + i > 7 || y + i > 7 || board[x + i][y + i] * team > 0)
+						ur = false;
+					//bl
+					if (x - i < 0 || y - i < 0 || board[x - i][y - i] * team > 0)
+						bl = false;
+					//br
+					if (x + i > 7 || y - i < 0 || board[x + i][y - i] * team > 0)
+						br = false;
+
+			
+					//left
+					if (x - i < 0 || board[x - i][y] * team > 0)
+						left = false;
+					//right
+					if (x + i > 7 || board[x + i][y] * team > 0)
+						right = false;
+					//up
+					if (y - i < 0 || board[x][y - i] * team > 0)
+						up = false;
+					//bot
+					if (y + i > 7 || board[x][y + i] * team > 0)
+						bot = false;
+
+					if (left)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y));
+					if (right)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y));
+					if (up)
+						potentialMoves.emplace_back(sf::Vector2i(x, y - i));
+					if (bot)
+						potentialMoves.emplace_back(sf::Vector2i(x, y + i));
+					if (ul)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y + i));
+					if (ur)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y + i));
+					if (bl)
+						potentialMoves.emplace_back(sf::Vector2i(x - i, y - i));
+					if (br)
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y - i));
+
+					left = board[x - i][y] * team < 0 ? false : left;
+					right = board[x + i][y] * team < 0 ? false : right;
+					up = board[x][y - i] * team < 0 ? false : up;
+					bot = board[x][y + i] * team < 0 ? false : bot;
+
+					ul = board[x - i][y + i] * team < 0 ? false : ul;
+					ur = board[x + i][y + i] * team < 0 ? false : ur;
+					bl = board[x - i][y - i] * team < 0 ? false : bl;
+					br = board[x + i][y - i] * team < 0 ? false : br;
+					if (!left && !right && !bot && !up && !ul && !ur && !br && !bl)
+						break;
+				}
+				break;
 	
+			//king
+				//superposed board to check where can the king move freely and check it in its entourage
+			case 6:
+				this->calcKingSafeSpace(this->turn);
+				for (int i = -1; i <= 1; i++)
+					for (int j = -1; j <= 1; j++)
+					{
+						if (!sf::IntRect({ 0,0 }, { 8,8 }).contains({x+i,y+j})
+							|| this->movesBoard[x + i][y + j] == -1 || (!i && !j))
+							continue;
 
-	bool tempCheck = this->check;
-	for (auto it = this->potentialMoves.begin(); it != this->potentialMoves.end();)
-	{
-		bool removeMove = false;
+						potentialMoves.emplace_back(sf::Vector2i(x + i, y + j));
+					}
+				break;
 
-		int tempVal = this->board[x][y];
-		int tempVal2 = this->board[(*it).x][(*it).y];
-		this->board[(*it).x][(*it).y] = this->board[x][y];
-		this->board[x][y] = 0;
-		this->check = false;
-		this->lookForChecks();
+			default:
+				break;
+			}
 
-		this->board[(*it).x][(*it).y] = tempVal2;
-		this->board[x][y] = tempVal;
+			//PIN CHECK
 
-		removeMove = this->check;
+			// cant move pieces that are pinned right?
+			// delete any potential move that may cause an in direct check?
+			// if checked delete any potential move which does not change the 
+			// fate of our beloved king?
 
-		if (removeMove)
-			it = this->potentialMoves.erase(it);
-		else
-			it++;
-	}
-	this->check = tempCheck;
+			bool tempCheck = this->check;
+			for (auto it = this->potentialMoves.begin(); it != this->potentialMoves.end();)
+			{
+				bool removeMove = false;
 
+				int tempVal = this->board[x][y];
+				int tempVal2 = this->board[(*it).x][(*it).y];
+				this->board[(*it).x][(*it).y] = this->board[x][y];
+				this->board[x][y] = 0;
+				this->check = false;
+				this->lookForChecks();
+
+				this->board[(*it).x][(*it).y] = tempVal2;
+				this->board[x][y] = tempVal;
+
+				removeMove = this->check;
+
+				if (removeMove)
+					it = this->potentialMoves.erase(it);
+				else
+					it++;
+			}
+			this->check = tempCheck;
+
+			if (!potentialMoves.empty())
+			{
+				//copy the vector into the board moves and clear then continue
+				std::copy(potentialMoves.begin(), potentialMoves.end(), std::back_inserter(this->boardMoves[x][y]));
+				movesAvailable = true;
+			}
+
+			potentialMoves.clear();
+		}
+	/*
 	if (potentialMoves.empty()) {
 		this->soundPlayed = "unselectable";
 	}
+	*/
 
+		if (!movesAvailable)
+			this->checkmate = true;
 }
 
 void Board::calcKingSafeSpace(bool team)
@@ -598,6 +630,8 @@ void Board::lookForChecks()
 
 void Board::playSounds()
 {
+	//std::cout << "prev:  " << this->prevSoundPlayed << " |  current:  " << this->soundPlayed<< '\n';
+
 	//only play the sound if we change state
 	//this ensures that it plays once
 	if (this->soundPlayed != this->prevSoundPlayed) {
@@ -641,6 +675,7 @@ Board::~Board()
 void Board::nextTurn()
 {
 	this->turn = !this->turn;
+	this->calculatePotentialMoves = true;
 }
 
 void Board::updateMouseCoordinates(sf::Vector2i mouseCoordinates)
@@ -682,33 +717,64 @@ void Board::handleInput()
 		}
 		else {
 			bool playedMove = false;
-			bool atePiece = false;
-			if (!this->potentialMoves.empty())
-				for (auto move : this->potentialMoves)
+			int pieceEaten = false;
+			if (!this->boardMoves[selectedPieceCoords.x][selectedPieceCoords.y].empty())
+				for (auto move : this->boardMoves[selectedPieceCoords.x][selectedPieceCoords.y])
 				{
 					// move it
 					if (move == coords)
 					{
-						atePiece = this->board[coords.x][coords.y] != 0;
+						//add score!
+						pieceEaten = abs(this->board[coords.x][coords.y]);
 						playedMove = true;
 						this->board[coords.x][coords.y] = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y];
 						this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y] = 0;
+						//change the turn and log the move
+						
+						std::string output;
+						int pieceMoved = abs(this->board[coords.x][coords.y]);
+						if (pieceMoved > 1)
+							output = "BRNQK"[pieceMoved - 2];
+						output += "abcdefgh"[coords.x] + std::to_string(coords.y); // y number, x letter
+
+						movesLog.push_back(output);
+						std::cout << output << '\n';
 						break; // no need to continue over the rest
 					}
 				}
 
 			if (coords != this->selectedPieceCoords)
 			{
+				this->selectedPieceCoords = coords;
+				bool piece = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y] * (2 * this->turn - 1) > 0;
+				/*if (piece)
+				{
+					this->selectedPieceType = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y];
+					this->isPieceSelected = 1;
+				}
+				else {
+					
+				}*/
 				this->selectedPieceType = 0;
 				this->isPieceSelected = 0;
+				if (this->prevSoundPlayed == "unselectable")
+					this->prevSoundPlayed = "unselectable2";
 				
 				this->soundPlayed = "select2";
 			}
 			if (playedMove)
 			{
+
 				//play the move sound
-				this->soundPlayed = atePiece ? "take" : "move";
-				this->turn = !this->turn;
+				this->soundPlayed = pieceEaten ? "take" : "move";
+				//add score if a piece was eaten
+				if (turn)
+					this->whiteScore += pieceEaten;
+				else
+					this->blackScore += pieceEaten;
+				
+				this->nextTurn();
+
 			}
 		}
 	}
@@ -723,8 +789,15 @@ void Board::update(const float& dt)
 {
 
 	this->check = false;
-	this->calculatePotentialMoves();
+	//calculate all moves every turn
+	if (this->calculatePotentialMoves)
+	{
+		this->calcPotentialMoves();
+		this->calculatePotentialMoves = false;
+	}
 	this->lookForChecks();
+
+	
 	
 	//done processing the board? play the corresponding sound
 	playSounds();

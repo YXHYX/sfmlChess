@@ -9,6 +9,7 @@
 //score 
 //make a good bot
 //add sound and better UI
+//one calculation for each potential move at each turn (necessary for bot and 
 
 class Game
 {
@@ -17,7 +18,9 @@ private:
 	//main comps
 	sf::RenderWindow window;
 	sf::Font font;
-	sf::Text *turn;
+
+	//raw pointers no need for complicated stuff
+	sf::Text* turn;
 	sf::Text* score;
 	sf::Text* check;
 	//sf::Sound;
