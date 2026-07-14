@@ -26,9 +26,13 @@ void Game::update(const float& dt)
 {
 	this->board.update(dt);
 	this->turn->setString(this->board.getTurn() ? "Turn: White" : "Turn: Black");
-	this->check->setString(this->board.getCheck().first ? (this->board.getCheck().second ? 
+	
+	this->check->setString(std::get<0>(this->board.getGameState())? (std::get<1>(this->board.getGameState()) ?
 		(this->board.getTurn() ? "Checkmate!\nBlack wins" : "Checkmate!\nWhite wins")
-		: (this->board.getTurn() ? "White King Check!" : "Black king Check!")) : "");;
+		: (this->board.getTurn() ? "White King Check!" : "Black king Check!")) : "");
+
+	if (std::get<2>(this->board.getGameState()))
+		this->check->setString("Stalemate!");
 	this->score->setString("White Score: " + std::to_string(this->board.getScore().first)
 		+ "\nBlack Score: " + std::to_string(this->board.getScore().second));
 }

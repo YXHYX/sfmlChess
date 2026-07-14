@@ -53,6 +53,7 @@ private:
 	bool turn = 1; // 1 for white 0 for black
 	bool check = false;
 	bool checkmate = false;
+	bool stalemate = false;
 	bool promotion = false;
 
 	//used for castling
@@ -83,7 +84,7 @@ public:
 	void updateMouseCoordinates(sf::Vector2i mouseCoordinates);
 
 	bool getTurn();
-	std::pair<bool,bool> getCheck();
+	std::tuple<bool, bool, bool> getGameState();
 	std::pair<int,int> getScore();
 
 	void handleInput();

@@ -58,7 +58,7 @@ void Board::resetBoard()
 	for (int i = 0; i < 8; i++)
 	{
 		//white side pawns
-		board[i][1] = 1;
+		//board[i][1] = 1;
 		board[i][2] = 0;
 		board[i][3] = 0;
 		board[i][4] = 0;
@@ -336,7 +336,7 @@ void Board::calcPotentialMoves()
 					}
 
 				//add castling positions
-				if (blackCanCastle || whiteCanCastle)
+				if (blackCanCastle && turn == 0)
 				{
 					//check if the passage is clear
 					bool castlingleft = false;
@@ -353,6 +353,25 @@ void Board::calcPotentialMoves()
 					if(castlingright)
 						potentialMoves.emplace_back(sf::Vector2i(x + 2, y));
 					if(castlingleft)
+						potentialMoves.emplace_back(sf::Vector2i(x - 2, y));
+				}
+				if (whiteCanCastle && turn ==1)
+				{
+					//check if the passage is clear
+					bool castlingleft = false;
+					bool castlingright = false;
+
+					//left
+					if (this->movesBoard[x + 1][y] == 0 &&
+						this->movesBoard[x + 2][y] == 0)
+						castlingright = true;
+					if (this->movesBoard[x - 1][y] == 0 &&
+						this->movesBoard[x - 2][y] == 0 &&
+						this->movesBoard[x - 3][y] == 0)
+						castlingleft = true;
+					if (castlingright)
+						potentialMoves.emplace_back(sf::Vector2i(x + 2, y));
+					if (castlingleft)
 						potentialMoves.emplace_back(sf::Vector2i(x - 2, y));
 				}
 				break;
@@ -408,7 +427,12 @@ void Board::calcPotentialMoves()
 	*/
 
 		if (!movesAvailable)
-			this->checkmate = true;
+		{
+			if (this->check)
+				this->checkmate = true;
+			else
+				this->stalemate = true;
+		} 
 }
 
 void Board::calcKingSafeSpace(bool team)
@@ -709,9 +733,9 @@ bool Board::getTurn()
 	return turn;
 }
 
-std::pair<bool, bool> Board::getCheck()
+std::tuple<bool, bool, bool> Board::getGameState()
 {
-	return std::pair<bool, bool>(this->check, this->checkmate);
+	return {this->check, this->checkmate,this->stalemate};
 }
 
 std::pair<int, int> Board::getScore()
@@ -745,16 +769,36 @@ void Board::handleInput()
 					// move it
 					if (move == coords)
 					{
+						this->selectedPieceType = abs(this->selectedPieceType);
 						//if king or rook moves, update flags
-						this->whiteCanCastle = (selectedPieceType != 6 && selectedPieceType != 3) && (turn == 1);
-						this->blackCanCastle = (selectedPieceType != 6 && selectedPieceType != 3) && (turn == 0);
+						if (turn) {
+							if(this->whiteCanCastle)
+								this->whiteCanCastle = (selectedPieceType != 6 && selectedPieceType != 3);
+						}
+						else
+							if(this->blackCanCastle)
+								this->blackCanCastle = (selectedPieceType != 6 && selectedPieceType != 3);
 
-						
 						//add score!
-						pieceEaten = abs(this->board[coords.x][coords.y]);
+						pieceEaten = this->board[coords.x][coords.y];
 						playedMove = true;
 						this->board[coords.x][coords.y] = this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y];
 						this->board[this->selectedPieceCoords.x][this->selectedPieceCoords.y] = 0;
+
+						//castling
+						if (selectedPieceType == 6 && abs(this->selectedPieceCoords.x-move.x) > 1)
+						{
+							//rook is always at the corners when castling and the y level stays the same, so take the move's y
+							// (its hardcoded which is bad but dont wana think much about it)
+							//but which rook are we taking?
+							int castlingDirection = -1; // -1 left, 1 for right
+							//get the closest rook to the thing
+							if (abs(this->board[7][move.y] - move.x) < abs(this->board[0][move.y] - move.x))
+								castlingDirection = 1; // right rook
+
+							this->board[move.x - castlingDirection][this->selectedPieceCoords.y] = this->board[castlingDirection > 0 ? 7 : 0][move.y];
+							this->board[castlingDirection > 0 ? 7 : 0][move.y] = 0;
+						}
 						//change the turn and log the move
 						
 						std::string output;
@@ -790,7 +834,7 @@ void Board::handleInput()
 			}
 			if (playedMove)
 			{
-
+				pieceEaten = abs(pieceEaten);
 				//play the move sound
 				this->soundPlayed = pieceEaten ? "take" : "move";
 				//add score if a piece was eaten
