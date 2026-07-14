@@ -56,8 +56,8 @@ private:
 	bool promotion = false;
 
 	//used for castling
-	bool whiteKingMoved = false;
-	bool blackKingMoved = false;
+	bool whiteCanCastle = true;
+	bool blackCanCastle = true;
 	
 	int whiteScore = 0;
 	int blackScore = 0;

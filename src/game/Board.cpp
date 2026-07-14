@@ -334,6 +334,27 @@ void Board::calcPotentialMoves()
 
 						potentialMoves.emplace_back(sf::Vector2i(x + i, y + j));
 					}
+
+				//add castling positions
+				if (blackCanCastle || whiteCanCastle)
+				{
+					//check if the passage is clear
+					bool castlingleft = false;
+					bool castlingright = false;
+
+					//left
+					if (this->movesBoard[x + 1][y] == 0 &&
+						this->movesBoard[x + 2][y] == 0)
+						castlingright = true;
+					if (this->movesBoard[x - 1][y] == 0 && 
+						this->movesBoard[x - 2][y] == 0 &&
+						this->movesBoard[x - 3][y] == 0)
+						castlingleft = true;
+					if(castlingright)
+						potentialMoves.emplace_back(sf::Vector2i(x + 2, y));
+					if(castlingleft)
+						potentialMoves.emplace_back(sf::Vector2i(x - 2, y));
+				}
 				break;
 
 			default:
@@ -724,6 +745,11 @@ void Board::handleInput()
 					// move it
 					if (move == coords)
 					{
+						//if king or rook moves, update flags
+						this->whiteCanCastle = (selectedPieceType != 6 && selectedPieceType != 3) && (turn == 1);
+						this->blackCanCastle = (selectedPieceType != 6 && selectedPieceType != 3) && (turn == 0);
+
+						
 						//add score!
 						pieceEaten = abs(this->board[coords.x][coords.y]);
 						playedMove = true;
